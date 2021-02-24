@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gocolly/colly"
+	"github.com/my-Sakura/go-spider-scheduler/store/mysql"
 	nats "github.com/nats-io/nats.go"
 )
 
@@ -20,6 +21,7 @@ func academicianParser(url string) {
 		name := e.DOM.Find("h1").Eq(0).Text()
 		content := e.DOM.Find("p:contains(院士)").Text()
 		fmt.Println(name, content)
+		mysql.InsertTableAcademician(name, content)
 	})
 
 	c.Visit(url)
@@ -32,7 +34,6 @@ func stateDepartmentParser(url string) {
 	fmt.Println(url, "in")
 	c.OnHTML("div.content", func(e *colly.HTMLElement) {
 		title = e.DOM.Find("h1").Text()
-		fmt.Println(title)
 
 		e.ForEach("p", func(_ int, element *colly.HTMLElement) {
 			content = content + element.Text + "\n"
