@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,9 +18,16 @@ import (
 )
 
 var (
-	popularTourists  = make(map[string][]PopularTourist)
-	selectedContents = make(map[string][]SelectedContent)
+	popularTourists   = make(map[string][]PopularTourist)
+	selectedContents  = make(map[string][]SelectedContent)
+	scenicTicketInfos = make(map[string][]ScenicTicketInfo)
 )
+
+type ScenicTicketInfo struct {
+	TicketName   string
+	TicketPrice  int
+	MonthlySales int
+}
 
 type PopularTourist struct {
 	TouristName string
@@ -45,6 +53,14 @@ type Task struct {
 	mu     *sync.Mutex
 }
 
+type Comment struct {
+	Data Data `json:"data"`
+}
+
+type Data struct {
+	Html string `json:"html"`
+}
+
 func NewTask() *Task {
 	return &Task{
 		client: &http.Client{},
@@ -52,35 +68,27 @@ func NewTask() *Task {
 	}
 }
 
-func (t *Task) crawlManChengHanMu(URL string) {
-	// var selectedContent SelectedContent
-	// selectedContentSlice := make([]SelectedContent, 0)
-
-	req, _ := http.NewRequest("GET", URL, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36")
-
-	resp, err := t.client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// doc.Find()
-}
-
 func main() {
 	wg := sync.WaitGroup{}
-	wg.Add(4)
+	wg.Add(5)
 	datas := make([][]string, 0)
 	data := make([]string, 0)
 	task := NewTask()
 
-	task.crawlManChengHanMu("https://piao.qunar.com/ticket/detail_3376839007.html?st=a3clM0QlRTQlQkYlOUQlRTUlQUUlOUElMjZpZCUzRDM1MzklMjZ0eXBlJTNEMCUyNmlkeCUzRDElMjZxdCUzRHJlZ2lvbiUyNmFwayUzRDIlMjZzYyUzRFdXVyUyNnVyJTNEJUU2JUIyJUIzJUU1JThDJTk3JTI2bHIlM0QlRTQlQkYlOUQlRTUlQUUlOUElMjZmdCUzRCU3QiU3RA%3D%3D#from=mps_search_suggest")
+	go func() {
+		task.crawlBaoDingScenicTicket("https://piao.qunar.com/ticket/list.htm?keyword=%E4%BF%9D%E5%AE%9A&region=%E6%B2%B3%E5%8C%97&from=mps_search_suggest&page=1")
+		for _, baodingScenicTicketInfo := range scenicTicketInfos["baoding"] {
+			data = append(data, baodingScenicTicketInfo.TicketName)
+			data = append(data, strconv.Itoa(baodingScenicTicketInfo.MonthlySales))
+			data = append(data, strconv.Itoa(baodingScenicTicketInfo.TicketPrice))
+			datas = append(datas, data)
+			data = nil
+		}
+
+		writeIntoCSVFile("baodingScenivTicket.csv", datas)
+		datas = nil
+		wg.Done()
+	}()
 
 	go func() {
 		task.crawlBeiJingSelectedContent("http://www.mafengwo.cn/search/q.php?q=%E5%8C%97%E4%BA%AC")
@@ -118,6 +126,11 @@ func main() {
 			data = append(data, baoDingPopularTourist.TouristName)
 			data = append(data, baoDingPopularTourist.PublishDate)
 			data = append(data, baoDingPopularTourist.CrawlDate)
+			var HotComment string
+			for _, comment := range baoDingPopularTourist.HotComments {
+				HotComment += comment.CommentatorName + "\n" + comment.CommentContent + "\n"
+			}
+			data = append(data, HotComment)
 			datas = append(datas, data)
 			data = nil
 		}
@@ -132,6 +145,13 @@ func main() {
 			data = append(data, beiJingPopularTourist.TouristName)
 			data = append(data, beiJingPopularTourist.PublishDate)
 			data = append(data, beiJingPopularTourist.CrawlDate)
+
+			var HotComment string
+			for _, comment := range beiJingPopularTourist.HotComments {
+				HotComment += comment.CommentatorName + "\n" + comment.CommentContent + "\n"
+			}
+			data = append(data, HotComment)
+
 			datas = append(datas, data)
 			data = nil
 		}
@@ -287,6 +307,7 @@ func (t *Task) crawlBaoDingPopularTourist(URL string) {
 	if err != nil {
 		panic(err)
 	}
+
 	defer resp.Body.Close()
 
 	for _, cookie := range resp.Cookies() {
@@ -299,6 +320,7 @@ func (t *Task) crawlBaoDingPopularTourist(URL string) {
 	}
 
 	links := make([]string, 0)
+	poiID := make([]string, 0)
 	regexpDate := regexp.MustCompile("[0-9]+-[0-9]+-[0-9]+")
 	regexpLink := regexp.MustCompile("&id=[0-9]+")
 
@@ -308,10 +330,12 @@ func (t *Task) crawlBaoDingPopularTourist(URL string) {
 		host := "http://mafengwo.cn"
 		path := "poi" + "/" + id + ".html"
 		link := host + "/" + path
+		poiID = append(poiID, id)
 		links = append(links, link)
 	})
 
-	for _, link := range links {
+	for i, link := range links {
+		req.Header.Set("Referer", fmt.Sprintf("https://www.mafengwo.cn/poi/%s.html", poiID[i]))
 		req.URL, _ = url.Parse(link)
 		resp, err := t.client.Do(req)
 		if err != nil {
@@ -327,10 +351,16 @@ func (t *Task) crawlBaoDingPopularTourist(URL string) {
 		popularTourist.TouristName = doc.Find("body > div.container > div.row.row-top > div > div.title > h1").Text()
 		popularTourist.PublishDate = regexpDate.FindString(doc.Find("body > div.container > div:nth-child(7) > div.mod.mod-detail > div:nth-child(6)").Text())
 		popularTourist.CrawlDate = time.Now().Format("2006-01-02")
-		doc.Find("#pagelet-block-24289b4cb9321822e98f07ac1c91450d > div > div._j_commentlist > div.rev-list > ul > li").Each(func(i int, s *goquery.Selection) {
-			comment := s.Find("p").Text()
-			fmt.Println(comment)
-		})
+
+		link = fmt.Sprintf("https://pagelet.mafengwo.cn/poi/pagelet/poiCommentListApi?params={\"poi_id\":\"%s\",\"page\":%d}", poiID[i], 1)
+		r, err := http.NewRequest("POST", link, nil)
+		if err != nil {
+			panic(err)
+		}
+		r.Header.Set("Referer", fmt.Sprintf("https://www.mafengwo.cn/poi/%s.html", poiID[i]))
+		r.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36")
+
+		popularTourist.HotComments = t.crawlSelectedComment(r)
 		popularTouristSlice = append(popularTouristSlice, popularTourist)
 	}
 
@@ -365,6 +395,7 @@ func (t *Task) crawlBeiJingPopularTourist(URL string) {
 	}
 
 	links := make([]string, 0)
+	poiID := make([]string, 0)
 	regexpLink := regexp.MustCompile("&id=[0-9]+")
 	doc.Find("#_j_search_result_left > div:nth-child(3) > div.content.top_pois-list > a").Each(func(i int, s *goquery.Selection) {
 		href, _ := s.Attr("href")
@@ -372,11 +403,12 @@ func (t *Task) crawlBeiJingPopularTourist(URL string) {
 		host := "http://mafengwo.cn"
 		path := "poi" + "/" + id + ".html"
 		link := host + "/" + path
+		poiID = append(poiID, id)
 		links = append(links, link)
 	})
 
 	regexpDate := regexp.MustCompile("[0-9]+-[0-9]+-[0-9]+")
-	for _, link := range links {
+	for i, link := range links {
 		req.URL, _ = url.Parse(link)
 		resp, err = t.client.Do(req)
 		if err != nil {
@@ -392,6 +424,14 @@ func (t *Task) crawlBeiJingPopularTourist(URL string) {
 		popularTourist.TouristName = doc.Find("body > div.container > div.row.row-top > div > div.title > h1").Text()
 		popularTourist.PublishDate = regexpDate.FindString(doc.Find("body > div.container > div:nth-child(7) > div.mod.mod-detail > div:nth-child(6)").Text())
 		popularTourist.CrawlDate = time.Now().Format("2006-01-02")
+
+		link = fmt.Sprintf("https://pagelet.mafengwo.cn/poi/pagelet/poiCommentListApi?params={\"poi_id\":\"%s\",\"page\":%d}", poiID[i], 1)
+
+		r, _ := http.NewRequest("POST", link, nil)
+		r.Header.Set("Referer", fmt.Sprintf("https://www.mafengwo.cn/poi/%s.html", poiID[i]))
+		r.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36")
+
+		popularTourist.HotComments = t.crawlSelectedComment(r)
 		popularTouristSlice = append(popularTouristSlice, popularTourist)
 	}
 
@@ -401,6 +441,71 @@ func (t *Task) crawlBeiJingPopularTourist(URL string) {
 	}
 	popularTourists["beijing"] = popularTouristSlice
 	t.mu.Unlock()
+}
+
+func (t *Task) crawlSelectedComment(req *http.Request) []HotComment {
+	comment := Comment{}
+	hotComments := make([]HotComment, 0)
+
+	resp, err := t.client.Do(req)
+	if err != nil {
+		panic("selectedComment crawl fail")
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&comment)
+	if err != nil {
+		panic("hotComment parse fail")
+	}
+	defer resp.Body.Close()
+
+	reg := regexp.MustCompile("<p class=\"rev-txt\">[\\s\\S]*?</p>")
+	result := reg.FindAllString(comment.Data.Html, -1)
+	for _, v := range result {
+		v = strings.Trim(v, "<p class=\"rev-txt\">")
+		v = strings.Trim(v, "</p>")
+		v = strings.ReplaceAll(v, "<br />", "\n")
+		hotComment := HotComment{
+			CommentContent: v,
+		}
+		hotComments = append(hotComments, hotComment)
+	}
+
+	return hotComments
+}
+
+func (t *Task) crawlBaoDingScenicTicket(URL string) {
+	req, _ := http.NewRequest("GET", URL, nil)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36")
+
+	resp, err := t.client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	doc.Find("div.sight_item.sight_itempos").Each(func(i int, s *goquery.Selection) {
+		scenic, exist := s.Attr("data-sight-name")
+		if exist && scenic == "满城汉墓" {
+			ticketPrice := s.Find("div > div.sight_item_pop > table > tbody > tr:nth-child(1) > td > span > em").Text()
+			monthlySales := s.Find("div > div.sight_item_pop > table > tbody > tr:nth-child(4) > td > span").Text()
+			price, _ := strconv.Atoi(ticketPrice)
+			monthly, _ := strconv.Atoi(monthlySales)
+			scenicTicketInfo := ScenicTicketInfo{
+				TicketName:   "满城汉墓",
+				TicketPrice:  price,
+				MonthlySales: monthly,
+			}
+
+			t.mu.Lock()
+			scenicTicketInfos["baoding"] = append(scenicTicketInfos["baoding"], scenicTicketInfo)
+			t.mu.Unlock()
+		}
+	})
 }
 
 func writeIntoCSVFile(fileName string, datas [][]string) {
