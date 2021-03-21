@@ -488,23 +488,24 @@ func (t *Task) crawlBaoDingScenicTicket(URL string) {
 		log.Fatal(err)
 	}
 
-	doc.Find("div.sight_item.sight_itempos").Each(func(i int, s *goquery.Selection) {
+	doc.Find("div.sight_item").Each(func(i int, s *goquery.Selection) {
 		scenic, exist := s.Attr("data-sight-name")
-		if exist && scenic == "满城汉墓" {
-			ticketPrice := s.Find("div > div.sight_item_pop > table > tbody > tr:nth-child(1) > td > span > em").Text()
-			monthlySales := s.Find("div > div.sight_item_pop > table > tbody > tr:nth-child(4) > td > span").Text()
-			price, _ := strconv.Atoi(ticketPrice)
-			monthly, _ := strconv.Atoi(monthlySales)
-			scenicTicketInfo := ScenicTicketInfo{
-				TicketName:   "满城汉墓",
-				TicketPrice:  price,
-				MonthlySales: monthly,
-			}
-
-			t.mu.Lock()
-			scenicTicketInfos["baoding"] = append(scenicTicketInfos["baoding"], scenicTicketInfo)
-			t.mu.Unlock()
+		if !exist {
+			log.Printf("%s crawl fail\n", scenic)
 		}
+		ticketPrice := s.Find("div > div.sight_item_pop > table > tbody > tr:nth-child(1) > td > span > em").Text()
+		monthlySales := s.Find("div > div.sight_item_pop > table > tbody > tr:nth-child(4) > td > span").Text()
+		price, _ := strconv.Atoi(ticketPrice)
+		monthly, _ := strconv.Atoi(monthlySales)
+		scenicTicketInfo := ScenicTicketInfo{
+			TicketName:   scenic,
+			TicketPrice:  price,
+			MonthlySales: monthly,
+		}
+
+		t.mu.Lock()
+		scenicTicketInfos["baoding"] = append(scenicTicketInfos["baoding"], scenicTicketInfo)
+		t.mu.Unlock()
 	})
 }
 
