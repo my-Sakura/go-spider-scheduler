@@ -121,7 +121,7 @@ func (b *BaoDingPopularTouristSummary) Crawl(URL string) error {
 	return nil
 }
 
-func (b *BeiJingPopularTouristSummary) crawlSelectedComment(req *http.Request) ([]hotComment, error) {
+func (b *BaoDingPopularTouristSummary) crawlSelectedComment(req *http.Request) ([]hotComment, error) {
 	comment := Comment{}
 	hotComments := make([]hotComment, 0)
 
