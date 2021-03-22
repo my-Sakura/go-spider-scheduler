@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/my-Sakura/go-spider-scheduler/api/service/structure/shibor"
+	"github.com/my-Sakura/go-spider-scheduler/shibor/api/service/structure/shibor"
 )
 
 func ShiborBid(w http.ResponseWriter, r *http.Request) {
