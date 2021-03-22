@@ -7,24 +7,26 @@ import (
 	"github.com/my-Sakura/go-spider-scheduler/api/service/structure/shibor"
 )
 
-func Shibor(w http.ResponseWriter, r *http.Request) {
-	url := "http://www.chinamoney.com.cn/r/cms/www/chinamoney/data/shibor/shibor.json"
+func ShiborBid(w http.ResponseWriter, r *http.Request) {
+	url := "http://www.chinamoney.com.cn/ags/ms/cm-u-bk-shibor/ShiborPri"
+	param := r.URL.Query()
+	url += "?" + param.Encode()
 
-	shiborSummary := shibor.NewShiborSummary()
+	shiborBidSummary := shibor.NewShiborBidSummary()
 
-	data, err := shiborSummary.Crawl(url)
+	data, err := shiborBidSummary.Crawl(url)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("get data faied"))
 	}
 
-	err = shiborSummary.Parse(data)
+	err = shiborBidSummary.Parse(data)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("get data failed"))
 	}
 
-	resp, err := json.Marshal(shiborSummary.Records)
+	resp, err := json.Marshal(shiborBidSummary.Records)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 	}
