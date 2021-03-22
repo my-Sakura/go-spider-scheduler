@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/my-Sakura/go-spider-scheduler/service/request"
+	"github.com/my-Sakura/go-spider-scheduler/pkg/service/request"
 )
 
 type ScenicTicketSummary struct {

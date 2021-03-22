@@ -9,33 +9,32 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/my-Sakura/go-spider-scheduler/service/request"
+	"github.com/my-Sakura/go-spider-scheduler/pkg/service/request"
 )
 
-type BeiJingSelectedContentSummary struct {
-	Data        []BeiJingSelectedContentItem
+type BaoDingSelectedContentSummary struct {
+	Data        []BaoDingSelectedContentItem
 	tableHeader []string
 	client      *http.Client
 }
 
-type BeiJingSelectedContentItem struct {
+type BaoDingSelectedContentItem struct {
 	Title         string
 	PublishedDate string
 	CrawlDate     string
 	ScanNumber    int
 }
 
-// NewBeiJingSelectedContentSummary -
-func NewBeiJingSelectedContentSummary() *BeiJingSelectedContentSummary {
-	return &BeiJingSelectedContentSummary{
-		Data:   make([]BeiJingSelectedContentItem, 0),
+// New
+func NewBaoDingSelectedContentSummary() *BaoDingSelectedContentSummary {
+	return &BaoDingSelectedContentSummary{
+		Data:   make([]BaoDingSelectedContentItem, 0),
 		client: &http.Client{},
 	}
 }
 
-func (b *BeiJingSelectedContentSummary) Crawl(URL string) error {
+func (b *BaoDingSelectedContentSummary) Crawl(URL string) error {
 	req := request.Get(URL, nil)
-
 	if req == nil {
 		return request.ErrInvalidRequest
 	}
@@ -56,7 +55,7 @@ func (b *BeiJingSelectedContentSummary) Crawl(URL string) error {
 	regexpDate := regexp.MustCompile("[0-9]+-[0-9]+-[0-9]+")
 	regexpScanNumber := regexp.MustCompile("[0-9]+浏览")
 	links := make([]string, 0)
-	doc.Find("#_j_search_result_left > div:nth-child(7) > ul > li").Each(func(i int, s *goquery.Selection) {
+	doc.Find("#_j_search_result_left > div:nth-child(5) > ul > li").Each(func(i int, s *goquery.Selection) {
 		if strings.Contains(s.Find("div.foot").Text(), "浏览") {
 			title := s.Find("span.head").Text()
 			crawlDate := time.Now().Format("2006-01-02")
@@ -65,7 +64,7 @@ func (b *BeiJingSelectedContentSummary) Crawl(URL string) error {
 			if err != nil {
 				log.Println("ScanNumber string convert to int failed")
 			}
-			beiJingSelectedContentItem := BeiJingSelectedContentItem{
+			beiJingSelectedContentItem := BaoDingSelectedContentItem{
 				Title:         title,
 				CrawlDate:     crawlDate,
 				PublishedDate: publishedDate,
@@ -108,7 +107,7 @@ func (b *BeiJingSelectedContentSummary) Crawl(URL string) error {
 		if err != nil {
 			log.Println("ScanNumber string convert to int failed")
 		}
-		beiJingSelectedContentItem := BeiJingSelectedContentItem{
+		beiJingSelectedContentItem := BaoDingSelectedContentItem{
 			Title:         title,
 			CrawlDate:     crawlDate,
 			PublishedDate: publishedDate,
@@ -121,25 +120,25 @@ func (b *BeiJingSelectedContentSummary) Crawl(URL string) error {
 }
 
 // Slice -
-func (s *BeiJingSelectedContentSummary) Slice() [][]string {
-	BeiJingSelectedContentSlices := make([][]string, 0)
-	BeiJingSelectedContentSlice := make([]string, 0)
+func (s *BaoDingSelectedContentSummary) Slice() [][]string {
+	BaoDingSelectedContentSlices := make([][]string, 0)
+	BaoDingSelectedContentSlice := make([]string, 0)
 
 	s.setTableHeader()
-	BeiJingSelectedContentSlices = append(BeiJingSelectedContentSlices, s.tableHeader)
+	BaoDingSelectedContentSlices = append(BaoDingSelectedContentSlices, s.tableHeader)
 	for _, data := range s.Data {
-		BeiJingSelectedContentSlice = append(BeiJingSelectedContentSlice, data.Title)
-		BeiJingSelectedContentSlice = append(BeiJingSelectedContentSlice, data.PublishedDate)
-		BeiJingSelectedContentSlice = append(BeiJingSelectedContentSlice, data.CrawlDate)
-		BeiJingSelectedContentSlice = append(BeiJingSelectedContentSlice, strconv.Itoa(data.ScanNumber))
-		BeiJingSelectedContentSlices = append(BeiJingSelectedContentSlices, BeiJingSelectedContentSlice)
+		BaoDingSelectedContentSlice = append(BaoDingSelectedContentSlice, data.Title)
+		BaoDingSelectedContentSlice = append(BaoDingSelectedContentSlice, data.PublishedDate)
+		BaoDingSelectedContentSlice = append(BaoDingSelectedContentSlice, data.CrawlDate)
+		BaoDingSelectedContentSlice = append(BaoDingSelectedContentSlice, strconv.Itoa(data.ScanNumber))
+		BaoDingSelectedContentSlices = append(BaoDingSelectedContentSlices, BaoDingSelectedContentSlice)
 
-		BeiJingSelectedContentSlice = nil
+		BaoDingSelectedContentSlice = nil
 	}
 
-	return BeiJingSelectedContentSlices
+	return BaoDingSelectedContentSlices
 }
 
-func (s *BeiJingSelectedContentSummary) setTableHeader() {
+func (s *BaoDingSelectedContentSummary) setTableHeader() {
 	s.tableHeader = append(s.tableHeader, "Title", "PublishedDate", "CrawlDate", "ScanNumber")
 }
