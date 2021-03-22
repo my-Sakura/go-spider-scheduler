@@ -1,4 +1,4 @@
-package popularTourist
+package service
 
 type hotComment struct {
 	CommentatorName string

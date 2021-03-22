@@ -1,12 +1,12 @@
-package scenicTicket
+package service
 
 import (
+	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/my-Sakura/go-spider-scheduler/pkg/service/request"
+	"github.com/my-Sakura/go-spider-scheduler/pkg/request"
 )
 
 type ScenicTicketSummary struct {
@@ -17,8 +17,8 @@ type ScenicTicketSummary struct {
 
 type ScenicTicketItem struct {
 	TicketName   string
-	TicketPrice  int
-	MonthlySales int
+	TicketPrice  string
+	MonthlySales string
 }
 
 // New
@@ -56,19 +56,13 @@ func (s *ScenicTicketSummary) Crawl(URL string) error {
 		}
 		ticketPrice := selection.Find("div > div.sight_item_pop > table > tbody > tr:nth-child(1) > td > span > em").Text()
 		monthlySales := selection.Find("div > div.sight_item_pop > table > tbody > tr:nth-child(4) > td > span").Text()
-		price, err := strconv.Atoi(ticketPrice)
-		if err != nil {
-			log.Printf("ticketPrice string convert to int failed")
-		}
-		monthly, err := strconv.Atoi(monthlySales)
-		if err != nil {
-			log.Printf("monthly string convert to int failed")
-		}
+
 		scenicTicketItem := ScenicTicketItem{
 			TicketName:   scenic,
-			TicketPrice:  price,
-			MonthlySales: monthly,
+			TicketPrice:  ticketPrice,
+			MonthlySales: monthlySales,
 		}
+		fmt.Println(scenicTicketItem)
 
 		s.Data = append(s.Data, scenicTicketItem)
 	})
@@ -85,8 +79,8 @@ func (s *ScenicTicketSummary) Slice() [][]string {
 	scenicTicketSlices = append(scenicTicketSlices, s.tableHeader)
 	for _, data := range s.Data {
 		scenicTicketSlice = append(scenicTicketSlice, data.TicketName)
-		scenicTicketSlice = append(scenicTicketSlice, strconv.Itoa(data.TicketPrice))
-		scenicTicketSlice = append(scenicTicketSlice, strconv.Itoa(data.MonthlySales))
+		scenicTicketSlice = append(scenicTicketSlice, data.TicketPrice)
+		scenicTicketSlice = append(scenicTicketSlice, data.MonthlySales)
 		scenicTicketSlices = append(scenicTicketSlices, scenicTicketSlice)
 		scenicTicketSlice = nil
 	}

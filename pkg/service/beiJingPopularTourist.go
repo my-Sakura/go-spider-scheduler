@@ -1,4 +1,4 @@
-package popularTourist
+package service
 
 import (
 	"encoding/json"
@@ -7,12 +7,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/my-Sakura/go-spider-scheduler/pkg/service/request"
+	"github.com/my-Sakura/go-spider-scheduler/pkg/request"
 )
 
 type BeiJingPopularTouristSummary struct {
@@ -76,8 +77,12 @@ func (b *BeiJingPopularTouristSummary) Crawl(URL string) error {
 		links = append(links, link)
 	})
 
+	cookie := os.Getenv("cookie")
+
 	for i, link := range links {
 		req.Header.Set("Referer", fmt.Sprintf("https://www.mafengwo.cn/poi/%s.html", poiID[i]))
+
+		req.Header.Set("Cookie", cookie)
 		req.URL, _ = url.Parse(link)
 		resp, err := b.client.Do(req)
 		if err != nil {

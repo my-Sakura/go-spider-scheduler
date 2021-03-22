@@ -1,4 +1,4 @@
-package selectedContent
+package service
 
 import (
 	"log"
@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/my-Sakura/go-spider-scheduler/pkg/service/request"
+	"github.com/my-Sakura/go-spider-scheduler/pkg/request"
 )
 
 type BeiJingSelectedContentSummary struct {

@@ -1,4 +1,4 @@
-package popularTourist
+package service
 
 import (
 	"encoding/json"
@@ -7,12 +7,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/my-Sakura/go-spider-scheduler/pkg/service/request"
+	"github.com/my-Sakura/go-spider-scheduler/pkg/request"
 )
 
 type BaoDingPopularTouristSummary struct {
@@ -44,17 +45,17 @@ func (b *BaoDingPopularTouristSummary) Crawl(URL string) error {
 	}
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36")
+	req.Header.Set("Referer", "http://www.mafengwo.cn/")
 
 	resp, err := b.client.Do(req)
 	if err != nil {
 		panic(err)
 	}
-
-	defer resp.Body.Close()
-
 	for _, cookie := range resp.Cookies() {
 		req.AddCookie(cookie)
 	}
+
+	defer resp.Body.Close()
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
@@ -76,14 +77,19 @@ func (b *BaoDingPopularTouristSummary) Crawl(URL string) error {
 		links = append(links, link)
 	})
 
+	cookie := os.Getenv("cookie")
+
 	for i, link := range links {
-		req.Header.Set("Referer", fmt.Sprintf("https://www.mafengwo.cn/poi/%s.html", poiID[i]))
 		req.URL, _ = url.Parse(link)
+		req.Header.Set("Referer", fmt.Sprintf("https://www.mafengwo.cn/poi/%s.html", poiID[i]))
+		req.Header.Set("Cookie", cookie)
+
 		resp, err := b.client.Do(req)
 		if err != nil {
 			panic(err)
 		}
 		defer resp.Body.Close()
+		fmt.Println(resp)
 
 		doc, err = goquery.NewDocumentFromReader(resp.Body)
 		if err != nil {
