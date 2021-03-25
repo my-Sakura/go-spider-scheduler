@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gocolly/colly"
-	"github.com/my-Sakura/go-spider-scheduler/store/mysql"
+	"github.com/my-Sakura/go-spider-scheduler/design/store/mysql"
 	nats "github.com/nats-io/nats.go"
 )
 
